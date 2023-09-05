@@ -19,7 +19,8 @@ api = Namespace('newman', description='Newman related operations')
 class runNewman(Resource):
     def post(self):
         coll_id = request.json["coll_id"]
-        run = requests.post(f"{nemwman_runner_int_url}/run/coll_id/{coll_id}")
+        env_id = request.json["env_id"] if "env_id" in request.json else ""
+        run = requests.post(f"{nemwman_runner_int_url}/run/coll_id/{coll_id}?{'env_id='+env_id if env_id != '' else ''}")
         report_name = run.json()["report_name"]
         requested_report = requests.get(f"{nemwman_runner_int_url}/report?report_name={report_name}")
         report = requested_report.json()
