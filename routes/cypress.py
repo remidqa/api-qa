@@ -1,9 +1,10 @@
-from flask_restx import Namespace, Resource, fields, reqparse
+import requests, os
+from flask_restx import Namespace, Resource
 from flask import request
-import json
-import urllib.request, urllib.parse, os
 from dotenv import load_dotenv 
-import requests
+import functions.mongodb as mongodb
+import functions.utils as utils
+from functions.send_webhooks import send_webhook
 
 load_dotenv()
 
@@ -15,5 +16,22 @@ api = Namespace('cypress_run', description='Cypress related operations')
 class runCypress(Resource):
     def post(self):
         app = request.json["app"]
-        r = requests.post(f"{cy_runner_int_url}/run/app/{app}")
-        return f"Status Code: {r.status_code}, Content: {r.json()}"
+        run = requests.post(f"{cy_runner_int_url}/run/app/{app}")
+        report_name = run.json()["infos"]["reportName"]
+        requested_report = requests.get(f"{cy_runner_int_url}/report/report_name/{report_name}")
+        report = requested_report.json()
+        inserted_report = mongodb.insert_document("cypress", report)
+        inserted_id = str(inserted_report.inserted_id)
+        deleted_report = requests.delete(f"{cy_runner_int_url}/report/report_name/{report_name}")
+        deleted_msg = deleted_report.json()["msg"]
+        report_status = utils.get_report_status("cypress", report)
+        webhook = send_webhook("cypress", inserted_id, report_status)
+        return utils.send_json({
+            "status": 200,
+            "data": {
+                "cy_run": run.json(),
+                "requested_report": requested_report.json(),
+                "inserted_id_in_mongodb": inserted_id,
+                "webhook": webhook
+            }
+        })
