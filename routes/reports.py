@@ -26,9 +26,3 @@ class postNewmanReport(Resource):
         query = utils.check_query(body)
         deleted_docs = mongodb.delete_decuments(runner, query)
         return utils.send_json({"msg": deleted_docs})
-
-#@api.route("/runner/<runner>/report_id/<report_id>")
-#class getNewmanReport(Resource):
-#    def get(self, runner, report_id):
-#        report = mongodb.find_one_document(runner, {"_id": ObjectId(report_id)})
-#        return utils.send_json(report)
