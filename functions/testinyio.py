@@ -104,15 +104,13 @@ def link_attachment_to_comment(attachment_id, comment_id):
     )
     return {'status_code': linked_attachment.status_code}
 
-def report_test_execution(app, env, project_id, tc_id, status, report):
-    tr_created = create_testrun(app, env, project_id)
-    tc_added = add_tc_to_tr(tr_created['tr_id'], tc_id, status)
+def report_test_execution(app, env, test_run_id, project_id, tc_id, status, report):
+    tc_added = add_tc_to_tr(test_run_id, tc_id, status)
     attachment_created = create_attachment(report, project_id)
     created_comment = create_comment(attachment_created['id'], attachment_created['blob_id'], attachment_created['size'])
-    linked_comment = link_comment_to_tr(tr_created['tr_id'], tc_id, created_comment['id'])
+    linked_comment = link_comment_to_tr(test_run_id, tc_id, created_comment['id'])
     linked_attachment = link_attachment_to_comment(attachment_created['id'], created_comment['id'])
     return {
-        'tr_created': tr_created,
         'tc_added': tc_added,
         'attachment_created': attachment_created,
         'created_comment': created_comment,
