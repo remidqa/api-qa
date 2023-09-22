@@ -7,6 +7,13 @@ import functions.utils as utils
 
 api = Namespace('reports', description='Reports related operations')
 
+@api.route("/runner/<runner>/report_id/<report_id>")
+class get_report_by_id(Resource):
+    def get(self, runner, report_id):
+        query = utils.check_query({"query": {"_id": report_id}})
+        documents = mongodb.find_documents(runner, query)
+        return utils.send_json(documents)
+
 @api.route("/runner/<runner>")
 class postNewmanReport(Resource):
     def post(self, runner):

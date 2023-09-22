@@ -28,24 +28,29 @@ class runNewman(Resource):
         github_conf = git.get_postman_conf(app, env)
         coll_id = github_conf['postman_collection_id']
         env_id = github_conf['postman_environment_id']
+        testinyio_project_id = github_conf['testinyio_project_id']
+        folders = github_conf['folders']
         
         # RUN COLLECTION
-        execution = newman.run_newman_and_get_report(coll_id, env_id)
-        report_status = utils.get_report_status("newman", execution['report'])
-        
-        # SAVE EXECUTION IN TESTS MANAGEMENT TOOL
-        tr = testinyio.report_test_execution( app, env, github_conf['testinyio_project_id'], github_conf['testinyio_testcase_id'], report_status, execution['report'] )
-        
-        # SAVE REPORT IN DATABASE
-        inserted_report = mongodb.insert_document("newman", execution['report'])
+        reports = {}
+        test_run = testinyio.create_testrun(app, env, testinyio_project_id)
+        test_run_id = test_run['tr_id']
+        for folder in folders:
+            folder_name = folder['folder_name']
+            execution = newman.run_newman_and_get_report(coll_id, env_id, folder_name)
+            reports[folder_name] = execution
+
+            # SAVE EXECUTION IN TESTS MANAGEMENT TOOL
+            tr = testinyio.report_test_execution( app, env, test_run_id, testinyio_project_id, folder['testinyio_testcase_id'], execution['status'], execution['report'] )
+
+        # SAVE EXECUTIONS IN DATABASE
+        global_status = 'failure' if any(reports[f]['status'] == "failure" for f in reports) else 'success'
+        inserted_report = mongodb.insert_document("newman", reports)
         inserted_id = str(inserted_report.inserted_id)
-        
-        # DELETE REPORT IN NEWMAN RUNNER
-        deleted_report = requests.delete(f"{nemwman_runner_int_url}/report?report_name={execution['report_name']}")
+
 
         # SLACK NOTIFICATION
-        webhook = send_webhook("newman", inserted_id, report_status)
-        
+        webhook = send_webhook("newman", inserted_id, global_status)
         
         return utils.send_json({
             "status": 200,
