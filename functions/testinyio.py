@@ -59,15 +59,15 @@ def create_attachment(report, project_id):
     }
     return response
 
-def create_comment(id, blob_id, size):
+def create_comment(project_id, attachment_id, blob_id, size):
     created_attachment = requests.post(
         url = f'{testinyio_url}/comment',
         headers = { 'X-Api-Key': testinyio_token },
         json = {
-            "project_id": 1,
+            "project_id": project_id,
             "status": "OPEN",
             "type": "ATTACHMENT",
-            "text": f"{id}|{blob_id}||report.json|text/plain|{size}"
+            "text": f"{attachment_id}|{blob_id}||report.json|text/plain|{size}"
         }
     )
     json_resp = created_attachment.json()
@@ -87,7 +87,15 @@ def link_comment_to_tr(tr_id, tc_id, comment_id):
             }
         ]
     )
-    return {'status_code': linked_comment.status_code}
+    return {'status_code': linked_comment.status_code, 'data': linked_comment.json(), 'req': [
+            {
+                "ids": {
+                    "comment_id": comment_id,
+                    "testcase_id": tc_id,
+                    "testrun_id": tr_id
+                }
+            }
+        ]}
 
 def link_attachment_to_comment(attachment_id, comment_id):
     linked_attachment = requests.post(
@@ -102,12 +110,19 @@ def link_attachment_to_comment(attachment_id, comment_id):
             }
         ]
     )
-    return {'status_code': linked_attachment.status_code}
+    return {'status_code': linked_attachment.status_code, 'data': linked_attachment.json(), "req": [
+            {
+                "ids": {
+                    "blob_id": attachment_id,
+                    "comment_id": comment_id
+                }
+            }
+        ]}
 
-def report_test_execution(app, env, test_run_id, project_id, tc_id, status, report):
+def report_test_execution(test_run_id, project_id, tc_id, status, report):
     tc_added = add_tc_to_tr(test_run_id, tc_id, status)
     attachment_created = create_attachment(report, project_id)
-    created_comment = create_comment(attachment_created['id'], attachment_created['blob_id'], attachment_created['size'])
+    created_comment = create_comment(project_id, attachment_created['id'], attachment_created['blob_id'], attachment_created['size'])
     linked_comment = link_comment_to_tr(test_run_id, tc_id, created_comment['id'])
     linked_attachment = link_attachment_to_comment(attachment_created['id'], created_comment['id'])
     return {

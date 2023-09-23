@@ -41,7 +41,7 @@ class runNewman(Resource):
             reports[folder_name] = execution
 
             # SAVE EXECUTION IN TESTS MANAGEMENT TOOL
-            tr = testinyio.report_test_execution( app, env, test_run_id, testinyio_project_id, folder['testinyio_testcase_id'], execution['status'], execution['report'] )
+            tr = testinyio.report_test_execution(test_run_id, testinyio_project_id, folder['testinyio_testcase_id'], execution['status'], execution['report'] )
 
         # SAVE EXECUTIONS IN DATABASE
         global_status = 'failure' if any(reports[f]['status'] == "failure" for f in reports) else 'success'
