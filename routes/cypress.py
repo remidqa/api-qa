@@ -11,9 +11,40 @@ from functions.send_webhooks import send_webhook
 
 load_dotenv()
 
-cy_runner_int_url = os.environ.get("CY_RUNNER_INT_URL")
-
 api = Namespace('cypress_run', description='Cypress related operations')
+
+def cypress_run(app, env, github_conf):
+    # GET CONFIGURATION
+    testinyio_project_id = github_conf['testinyio_project_id']
+    scenarios = github_conf['scenarios']
+
+    # RUN TESTS
+    test_run = testinyio.create_testrun(app, env, testinyio_project_id)
+    test_run_id = test_run['tr_id']
+    executions = cy.run_cy_and_get_reports(app, env)
+    testiny_updates = []
+    for exec in executions:
+        find_id = list(filter(lambda scenario: scenario["file_name"] == exec, scenarios))
+        testinyio_testcase_id = find_id[0]['testinyio_testcase_id']
+        testiny_update = testinyio.report_test_execution(test_run_id, testinyio_project_id, testinyio_testcase_id, executions[exec]['status'], executions[exec]['report'])
+        testiny_updates.append(testiny_update)
+
+    global_status = 'failure' if any(executions[exec]['status'] == "failure" for exec in executions) else 'success'
+
+    inserted_report = mongodb.insert_document("cypress", executions)
+    inserted_id = str(inserted_report.inserted_id)
+
+    webhook = send_webhook("cypress", inserted_id, global_status)
+        
+    return utils.send_json({
+        "status": 200,
+        "data": {
+            "testiny_updates": testiny_updates,
+            "cy_run_status": global_status,
+            "inserted_id_in_mongodb": inserted_id,
+            "webhook": webhook
+        }
+    })
 
 @api.route("/run")
 class runCypress(Resource):
@@ -21,39 +52,7 @@ class runCypress(Resource):
         # GET VARIABLES
         app = request.json["app"]
         env = request.json["env"]
-
-        # GET CONFIGURATION
         github_conf = git.get_cy_conf(app)
-        testinyio_project_id = github_conf['testinyio_project_id']
-        scenarios = github_conf['scenarios']
 
-        # RUN TESTS
-        test_run = testinyio.create_testrun(app, env, testinyio_project_id)
-        test_run_id = test_run['tr_id']
-        executions = cy.run_cy_and_get_reports(app, env)
-        testiny_updates = []
-        for exec in executions:
-            find_id = list(filter(lambda scenario: scenario["file_name"] == exec, scenarios))
-            testinyio_testcase_id = find_id[0]['testinyio_testcase_id']
-            testiny_update = testinyio.report_test_execution(test_run_id, testinyio_project_id, testinyio_testcase_id, executions[exec]['status'], executions[exec]['report'])
-            testiny_updates.append(testiny_update)
-
-        global_status = 'failure' if any(executions[exec]['status'] == "failure" for exec in executions) else 'success'
-
-        inserted_report = mongodb.insert_document("cypress", executions)
-        inserted_id = str(inserted_report.inserted_id)
-
-        webhook = send_webhook("cypress", inserted_id, global_status)
-        
-        
-
-        
-        return utils.send_json({
-            "status": 200,
-            "data": {
-                "testiny_updates": testiny_updates,
-                "cy_run_status": global_status,
-                "inserted_id_in_mongodb": inserted_id,
-                "webhook": webhook
-            }
-        })
+        response= cypress_run(app, env, github_conf)
+        return response
