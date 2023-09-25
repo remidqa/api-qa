@@ -13,9 +13,45 @@ import functions.newman_runner as newman
 
 load_dotenv()
 
-nemwman_runner_int_url = os.environ.get("NEWMAN_RUNNER_INT_URL")
-
 api = Namespace('newman', description='Newman related operations')
+
+def run_newman(app, env, github_conf):
+    # GET CONFIGURATION
+    coll_id = github_conf['postman_collection_id']
+    env_id = github_conf['postman_environment_id']
+    testinyio_project_id = github_conf['testinyio_project_id']
+    folders = github_conf['folders']
+        
+    # RUN COLLECTION
+    reports = {}
+    test_run = testinyio.create_testrun(app, env, testinyio_project_id)
+    test_run_id = test_run['tr_id']
+    for folder in folders:
+        folder_name = folder['folder_name']
+        execution = newman.run_newman_and_get_report(coll_id, env_id, folder_name)
+        reports[folder_name] = execution
+
+        # SAVE EXECUTION IN TESTS MANAGEMENT TOOL
+        tr = testinyio.report_test_execution(test_run_id, testinyio_project_id, folder['testinyio_testcase_id'], execution['status'], execution['report'] )
+
+    # SAVE EXECUTIONS IN DATABASE
+    global_status = 'failure' if any(reports[f]['status'] == "failure" for f in reports) else 'success'
+    inserted_report = mongodb.insert_document("newman", reports)
+    inserted_id = str(inserted_report.inserted_id)
+
+
+    # SLACK NOTIFICATION
+    webhook = send_webhook("newman", inserted_id, global_status)
+    
+    return utils.send_json({
+        "status": 200,
+        "data": {
+            "tr": tr,
+            "newman_run": execution,
+            "inserted_id_in_mongodb": inserted_id,
+            "webhook": webhook
+        }
+    })
 
 @api.route("/run")
 class runNewman(Resource):
@@ -23,41 +59,8 @@ class runNewman(Resource):
         # GET VARIABLES
         app = request.json['app']
         env = request.json['env']
-
-        # GET CONFIGURATION
         github_conf = git.get_postman_conf(app, env)
-        coll_id = github_conf['postman_collection_id']
-        env_id = github_conf['postman_environment_id']
-        testinyio_project_id = github_conf['testinyio_project_id']
-        folders = github_conf['folders']
-        
-        # RUN COLLECTION
-        reports = {}
-        test_run = testinyio.create_testrun(app, env, testinyio_project_id)
-        test_run_id = test_run['tr_id']
-        for folder in folders:
-            folder_name = folder['folder_name']
-            execution = newman.run_newman_and_get_report(coll_id, env_id, folder_name)
-            reports[folder_name] = execution
 
-            # SAVE EXECUTION IN TESTS MANAGEMENT TOOL
-            tr = testinyio.report_test_execution(test_run_id, testinyio_project_id, folder['testinyio_testcase_id'], execution['status'], execution['report'] )
+        response = run_newman(app, env, github_conf)
 
-        # SAVE EXECUTIONS IN DATABASE
-        global_status = 'failure' if any(reports[f]['status'] == "failure" for f in reports) else 'success'
-        inserted_report = mongodb.insert_document("newman", reports)
-        inserted_id = str(inserted_report.inserted_id)
-
-
-        # SLACK NOTIFICATION
-        webhook = send_webhook("newman", inserted_id, global_status)
-        
-        return utils.send_json({
-            "status": 200,
-            "data": {
-                "tr": tr,
-                "newman_run": execution,
-                "inserted_id_in_mongodb": inserted_id,
-                "webhook": webhook
-            }
-        })
+        return response

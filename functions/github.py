@@ -22,16 +22,30 @@ def get_conf(app):
 
 def get_postman_conf(app, env):
     conf = get_conf(app)
-    return { 
-        'testinyio_project_id': conf['testinyio_project_id'],
-        'postman_collection_id': conf['postman']['postman_collection_id'],
-        'postman_environment_id': conf['postman']['postman_environments'][env],
-        'folders': conf['postman']['scenarios']
-    }
+    if 'postman' in conf:
+        return { 
+            'testinyio_project_id': conf['testinyio_project_id'],
+            'postman_collection_id': conf['postman']['postman_collection_id'],
+            'postman_environment_id': conf['postman']['postman_environments'][env],
+            'folders': conf['postman']['scenarios']
+        }
+    else:
+        return None
 
 def get_cy_conf(app):
     conf = get_conf(app)
-    return { 
-        'testinyio_project_id': conf['testinyio_project_id'],
-        'scenarios': conf['cypress']['scenarios']
+    if 'cypress' in conf:
+        return { 
+            'testinyio_project_id': conf['testinyio_project_id'],
+            'scenarios': conf['cypress']['scenarios']
+        }
+    else:
+        return None
+
+def get_full_conf(app, env):
+    cy_conf = get_cy_conf(app)
+    postman_conf =  get_postman_conf(app, env)
+    return {
+        "cy": cy_conf,
+        "newman": postman_conf
     }
