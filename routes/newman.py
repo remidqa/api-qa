@@ -10,6 +10,7 @@ import functions.utils as utils
 import functions.github as git
 import functions.testinyio as testinyio
 import functions.newman_runner as newman
+import functions.discord as discord
 
 load_dotenv()
 
@@ -41,7 +42,8 @@ def run_newman(app, env, github_conf):
 
 
     # SLACK NOTIFICATION
-    webhook = send_webhook("newman", inserted_id, global_status)
+    webhook = discord.send_discord_webhook("newman", inserted_id, global_status, app, env)
+    #webhook = send_webhook("newman", inserted_id, global_status)
     
     return utils.send_json({
         "status": 200,
