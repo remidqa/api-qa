@@ -8,6 +8,7 @@ import functions.testinyio as testinyio
 import functions.github as git
 import functions.utils as utils
 from functions.send_webhooks import send_webhook
+import functions.discord as discord
 
 load_dotenv()
 
@@ -34,7 +35,8 @@ def cypress_run(app, env, github_conf):
     inserted_report = mongodb.insert_document("cypress", executions)
     inserted_id = str(inserted_report.inserted_id)
 
-    webhook = send_webhook("cypress", inserted_id, global_status)
+    #webhook = send_webhook("cypress", inserted_id, global_status)
+    webhook = discord.send_discord_webhook("cypress", inserted_id, global_status, app, env)
         
     return utils.send_json({
         "status": 200,
