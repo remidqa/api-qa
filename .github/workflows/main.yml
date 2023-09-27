@@ -29,6 +29,8 @@ jobs:
     uses: remidqa/use-guthubactions/.github/workflows/docker-build-push.yml@main
     with:
       APP: ${{ needs.vars.outputs.APP }}
+      DOCKER_USER: ${{ secrets.DOCKER_USER }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
   execute-tests:
     uses: remidqa/use-guthubactions/.github/workflows/main.yml@main
