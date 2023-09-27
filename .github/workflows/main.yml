@@ -1,13 +1,14 @@
 name: Build and Deploy Docker Image
-env:
-  APP: api-qa2
-  ENV: preview
 
 on:
   workflow_dispatch:
   #push:
   #  branches:
   #    - main
+
+env:
+  APP: api-qa2
+  ENV: preview
 
 jobs:
   execute-tests:
