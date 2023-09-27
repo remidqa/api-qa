@@ -1,4 +1,7 @@
 name: Build and Deploy Docker Image
+env:
+  APP: api-qa2
+  ENV: preview
 
 on:
   workflow_dispatch:
@@ -10,5 +13,5 @@ jobs:
   execute-tests:
     uses: remidqa/use-guthubactions/.github/workflows/main.yml@main
     with:
-      APP: api-qa2
-      ENV: preview
+      APP: $APP
+      ENV: $ENV
