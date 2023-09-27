@@ -25,6 +25,8 @@ jobs:
 
   execute-tests:
     uses: remidqa/use-guthubactions/.github/workflows/main.yml@main
+    needs:
+      - print
     with:
       APP: ${{ needs.print.outputs.APP }}
       ENV: ${{ needs.print.outputs.ENV }}
