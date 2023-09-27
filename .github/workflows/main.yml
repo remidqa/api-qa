@@ -13,5 +13,5 @@ jobs:
   execute-tests:
     uses: remidqa/use-guthubactions/.github/workflows/main.yml@main
     with:
-      APP: $APP
-      ENV: $ENV
+      APP: ${{ env.APP }}
+      ENV: ${{ env.ENV }}
