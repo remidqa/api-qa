@@ -11,8 +11,20 @@ env:
   ENV: preview
 
 jobs:
+  print:
+    runs-on: ubuntu-latest
+    outputs:
+      APP: ${{ steps.step1.outputs.APP }}
+      ENV: ${{ steps.step1.outputs.ENV }}
+    steps:
+      - name: Print inputs passed to the reusable workflow
+        id: step1
+        run: |
+          echo "APP: $APP" && echo "APP=$APP" >> $GITHUB_OUTPUT
+          echo "ENV: $ENV" && echo "ENV=$ENV" >> $GITHUB_OUTPUT
+
   execute-tests:
     uses: remidqa/use-guthubactions/.github/workflows/main.yml@main
     with:
-      APP: ${{ env.APP }}
-      ENV: ${{ env.ENV }}
+      APP: ${{ needs.print.outputs.APP }}
+      ENV: ${{ needs.print.outputs.ENV }}
