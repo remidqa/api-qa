@@ -24,25 +24,17 @@ jobs:
           echo "ENV: $ENV" && echo "ENV=$ENV" >> $GITHUB_OUTPUT
 
   build:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: docker login
-      env:
-        DOCKER_USER: ${{ secrets.DOCKER_USER }}
-        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      run: docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
-    - name: Build docker image
-      run: docker build -t $APP .
-    - name: Docker tag
-      run: docker tag $APP remidandois/$APP
-    - name: Docker push
-      run: docker push remidandois/$APP      
+    needs:
+      - vars
+    uses: remidqa/use-guthubactions/.github/workflows/docker-build-push.yml@main
+    with:
+      APP: ${{ needs.vars.outputs.APP }}
 
   execute-tests:
     uses: remidqa/use-guthubactions/.github/workflows/main.yml@main
     needs:
       - vars
+      - build
     with:
       APP: ${{ needs.vars.outputs.APP }}
       ENV: ${{ needs.vars.outputs.ENV }}
