@@ -4,7 +4,6 @@ from flask import request
 from dotenv import load_dotenv 
 import functions.cy_runner as cy
 import functions.github as git
-from functions.send_webhooks import send_webhook
 import routes.newman as newman
 import routes.cypress as cy
 

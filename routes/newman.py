@@ -4,7 +4,6 @@ import json
 import urllib.request, urllib.parse, os
 from dotenv import load_dotenv 
 import requests
-#from functions.send_webhooks import send_webhook
 import functions.mongodb as mongodb
 import functions.utils as utils
 import functions.github as git
@@ -43,7 +42,6 @@ def run_newman(app, env, github_conf):
 
     # SLACK NOTIFICATION
     webhook = discord.send_discord_webhook("newman", inserted_id, global_status, app, env)
-    #webhook = send_webhook("newman", inserted_id, global_status)
     
     return utils.send_json({
         "status": 200,
