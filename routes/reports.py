@@ -1,7 +1,7 @@
 from flask_restx import Namespace, Resource
 from flask import request
 from bson.objectid import ObjectId
-from functions.send_webhooks import send_webhook
+#from functions.send_webhooks import send_webhook
 import functions.mongodb as mongodb
 import functions.utils as utils
 
