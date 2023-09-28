@@ -36,6 +36,7 @@ jobs:
   deploy:
     needs:
       - build
+      - vars
     uses: remidqa/use-guthubactions/.github/workflows/pull-deploy.yml@main
     with:
       APP: ${{ needs.vars.outputs.APP }}
