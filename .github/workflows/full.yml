@@ -1,0 +1,24 @@
+name: Build and Deploy Docker Image
+
+on:
+  workflow_dispatch:
+  #push:
+  #  branches:
+  #    - main
+
+env:
+  APP: api-qa
+  ENV: preview
+
+jobs:
+  build:
+    uses: remidqa/use-guthubactions/.github/workflows/build-deploy-test.yml@main
+    with:
+      APP: api-qa
+      ENV: preview
+    secrets:
+      DOCKER_USER: ${{ secrets.DOCKER_USER }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      SSH_SERVER: ${{ secrets.SSH_SERVER }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
