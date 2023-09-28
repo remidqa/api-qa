@@ -11,7 +11,7 @@ jobs:
     uses: remidqa/qa-configurations/.github/workflows/build-deploy-test.yml@main
     with:
       APP: api-qa
-      ENV: preview
+      ENV: uat
     secrets:
       DOCKER_USER: ${{ secrets.DOCKER_USER }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
