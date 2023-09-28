@@ -2,9 +2,9 @@ name: Full
 
 on:
   workflow_dispatch:
-  #push:
-  #  branches:
-  #    - main
+  push:
+    branches:
+      - main
 
 env:
   APP: api-qa
