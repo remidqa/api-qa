@@ -48,7 +48,7 @@ jobs:
     uses: remidqa/use-guthubactions/.github/workflows/main.yml@main
     needs:
       - vars
-      - build
+      - deploy
     with:
       APP: ${{ needs.vars.outputs.APP }}
       ENV: ${{ needs.vars.outputs.ENV }}
