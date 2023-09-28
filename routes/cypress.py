@@ -52,7 +52,9 @@ class runCypress(Resource):
         # GET VARIABLES
         app = request.json["app"]
         env = request.json["env"]
-        github_conf = git.get_cy_conf(app)
+        cy_conf = git.get_cy_conf(app, env)
+        if cy_conf.get('err', {}):
+            return cy_conf
 
-        response= cypress_run(app, env, github_conf)
+        response= cypress_run(app, env, cy_conf)
         return response

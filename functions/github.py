@@ -14,36 +14,54 @@ def get_conf(app):
         'Authorization': f'Bearer {github_token}'
     }
     )
+    if file_request.status_code != 200:
+        return {"status": file_request.status_code, "data": file_request.json()}
     data= file_request.json()
     confBytes= base64.b64decode(data['content'])
     confStr= confBytes.decode('ascii')
     conf= json.loads(confStr)
-    return conf
+    return {"status": file_request.status_code, "data": conf}
 
 def get_postman_conf(app, env):
     conf = get_conf(app)
-    if 'postman' in conf:
-        return { 
-            'testinyio_project_id': conf['testinyio_project_id'],
-            'postman_collection_id': conf['postman']['postman_collection_id'],
-            'postman_environment_id': conf['postman']['postman_environments'][env],
-            'folders': conf['postman']['scenarios']
+    if conf['status'] != 200:
+        return {'err': f"no file found at '/{app}.json'"}
+    if conf.get('data', {}).get('postman', {}):
+        data = conf['data']
+        postman_conf = {
+            'testinyio_project_id': data['testinyio_project_id'] if data.get('testinyio_project_id', {}) else None,
+            'postman_collection_id': data['postman']['postman_collection_id'] if data.get('postman', {}).get('postman_collection_id', {}) else None,
+            'postman_environment_id': data['postman']['postman_environments'][env] if data.get('postman', {}).get('postman_environments', {}).get(env, {}) else None,
+            'folders': data['postman']['scenarios'] if data.get('postman', {}).get('scenarios', {}) else None
         }
+        if any(value is None for value in postman_conf.values()):
+            return {'err': f"wrong or missing values for '{', '.join({key: value for key, value in postman_conf.items() if value is None}.keys())}'"}
+        else:
+            return postman_conf
     else:
-        return None
+        return {'err': 'no postman configuration found in .json file'}
 
-def get_cy_conf(app):
+def get_cy_conf(app, env):
     conf = get_conf(app)
-    if 'cypress' in conf:
-        return { 
-            'testinyio_project_id': conf['testinyio_project_id'],
-            'scenarios': conf['cypress']['scenarios']
+    if conf['status'] != 200:
+        return {'err': f"no file found at '/{app}.json'"}
+    if conf.get('data', {}).get('cypress', {}):
+        data = conf['data']
+        cy_conf = {
+            'testinyio_project_id': data['testinyio_project_id'] if data.get('testinyio_project_id', {}) else None,
+            'scenarios': data['cypress']['scenarios'] if data.get('cypress', {}).get('scenarios', {}) else None,
+            'env': env if data.get('cypress', {}).get('envs', {}) and env in data['cypress']['envs'] else None
         }
+        if any(value is None for value in cy_conf.values()):
+            return {'err': f"wrong or missing values for '{', '.join({key: value for key, value in cy_conf.items() if value is None}.keys())}'"}
+        else:
+            return cy_conf
+        
     else:
-        return None
+        return {'err': 'no cypress configuration found in .json file'}
 
 def get_full_conf(app, env):
-    cy_conf = get_cy_conf(app)
+    cy_conf = get_cy_conf(app, env)
     postman_conf =  get_postman_conf(app, env)
     return {
         "cy": cy_conf,
