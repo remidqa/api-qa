@@ -4,7 +4,7 @@ import json
 import urllib.request, urllib.parse, os
 from dotenv import load_dotenv 
 import requests
-from functions.send_webhooks import send_webhook
+#from functions.send_webhooks import send_webhook
 import functions.mongodb as mongodb
 import functions.utils as utils
 import functions.github as git
