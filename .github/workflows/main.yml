@@ -33,6 +33,17 @@ jobs:
       DOCKER_USER: ${{ secrets.DOCKER_USER }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
+  deploy:
+    needs:
+      - build
+    uses: remidqa/use-guthubactions/.github/workflows/pull-deploy.yml@main
+    with:
+      APP: ${{ needs.vars.outputs.APP }}
+    secrets:
+      SSH_SERVER: ${{ secrets.SSH_SERVER }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      SSH_PRIVATE_KEY: ${{ SSH_PRIVATE_KEY }}
+
   execute-tests:
     uses: remidqa/use-guthubactions/.github/workflows/main.yml@main
     needs:
