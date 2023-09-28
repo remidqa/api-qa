@@ -7,7 +7,7 @@ import functions.cy_runner as cy
 import functions.testinyio as testinyio
 import functions.github as git
 import functions.utils as utils
-from functions.send_webhooks import send_webhook
+#from functions.send_webhooks import send_webhook
 import functions.discord as discord
 
 load_dotenv()
