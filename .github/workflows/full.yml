@@ -22,3 +22,4 @@ jobs:
       SSH_SERVER: ${{ secrets.SSH_SERVER }}
       SSH_USER: ${{ secrets.SSH_USER }}
       SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      ENV: ${{ secrets.ENV }}
