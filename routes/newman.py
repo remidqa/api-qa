@@ -59,8 +59,10 @@ class runNewman(Resource):
         # GET VARIABLES
         app = request.json['app']
         env = request.json['env']
-        github_conf = git.get_postman_conf(app, env)
+        newman_conf = git.get_postman_conf(app, env)
+        if newman_conf.get('err', {}):
+            return newman_conf
 
-        response = run_newman(app, env, github_conf)
+        response = run_newman(app, env, newman_conf)
 
         return response
