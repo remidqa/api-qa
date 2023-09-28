@@ -11,7 +11,7 @@ env:
   ENV: preview
 
 jobs:
-  build:
+  full:
     uses: remidqa/use-guthubactions/.github/workflows/build-deploy-test.yml@main
     with:
       APP: api-qa
