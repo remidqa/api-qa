@@ -12,7 +12,7 @@ env:
 
 jobs:
   full:
-    uses: remidqa/use-guthubactions/.github/workflows/build-deploy-test.yml@main
+    uses: remidqa/qa-configurations/.github/workflows/build-deploy-test.yml@main
     with:
       APP: api-qa
       ENV: preview
