@@ -1,6 +1,7 @@
-import os, requests, json, time
+import os, requests, json
 from dotenv import load_dotenv
 import base64
+import functions.utils as utils
 
 load_dotenv()
 
@@ -8,12 +9,13 @@ testinyio_url = os.environ.get("TESTINYIO_URL")
 testinyio_token = os.environ.get("TESTINYIO_TOKEN")
 
 def create_testrun(app, env, project_id):
+    test_run_title = f"{app}_{env}_{utils.generate_report_name()}"
     tr_creation = requests.post(
     url = f'{testinyio_url}/testrun',
     headers = { 'X-Api-Key': testinyio_token },
     json = {
         'project_id': project_id,
-        'title': f'{app}_{env}_{time.time()}'
+        'title': test_run_title
     }
     )
     data= tr_creation.json()
