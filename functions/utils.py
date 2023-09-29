@@ -1,6 +1,7 @@
 import json
 from bson import json_util
 from bson.objectid import ObjectId
+from datetime import datetime
 
 def get_report_status(runner, report):
     report_status = False
@@ -21,3 +22,17 @@ def check_query(body):
             id = query["_id"]
             query["_id"] = ObjectId(id)
     return query
+
+def generate_report_name():
+    dt = datetime.now()
+   
+    year = dt.year
+    month = str(dt.month).zfill(2)
+    day = str(dt.day).zfill(2)
+    week_day = dt.strftime('%A')[:3]
+    hour = str(dt.hour).zfill(2)
+    minute = str(dt.minute).zfill(2)
+    second = str(dt.second).zfill(2)
+    ms = str(dt.microsecond).zfill(6)[:2]
+    
+    return f"{year}_{month}_{day}-{week_day}-{hour}:{minute}:{second}.{ms}"
