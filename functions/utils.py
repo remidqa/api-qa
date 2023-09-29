@@ -2,6 +2,9 @@ import json
 from bson import json_util
 from bson.objectid import ObjectId
 from datetime import datetime
+import pytz
+
+
 
 def get_report_status(runner, report):
     report_status = False
@@ -25,14 +28,15 @@ def check_query(body):
 
 def generate_report_name():
     dt = datetime.now()
-   
-    year = dt.year
-    month = str(dt.month).zfill(2)
-    day = str(dt.day).zfill(2)
-    week_day = dt.strftime('%A')[:3]
-    hour = str(dt.hour).zfill(2)
-    minute = str(dt.minute).zfill(2)
-    second = str(dt.second).zfill(2)
-    ms = str(dt.microsecond).zfill(6)[:2]
+    ca_east_tz = pytz.timezone('America/Montreal')
+    dt_ca = dt.astimezone(ca_east_tz)
+    year = dt_ca.year
+    month = str(dt_ca.month).zfill(2)
+    day = str(dt_ca.day).zfill(2)
+    week_day = dt_ca.strftime('%A')[:3]
+    hour = str(dt_ca.hour).zfill(2)
+    minute = str(dt_ca.minute).zfill(2)
+    second = str(dt_ca.second).zfill(2)
+    ms = str(dt_ca.microsecond).zfill(6)[:2]
     
     return f"{year}_{month}_{day}-{week_day}-{hour}:{minute}:{second}.{ms}"
