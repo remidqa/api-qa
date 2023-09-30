@@ -33,8 +33,8 @@ def run_newman(metadata, github_conf):
         # SAVE EXECUTION IN TESTS MANAGEMENT TOOL
         tr = testinyio.report_test_execution(test_run_id, testinyio_project_id, scenario['testinyio_testcase_id'], execution['status'], execution['report'] )
 
-    # SAVE EXECUTIONS IN DATABASE
-    metadata['status'] = 'failure' if any(executions[f]['status'] == "failure" for f in executions) else 'success'
+    return utils.send_json(executions) 
+    
     inserted_report = mongodb.insert_document("newman", metadata, executions)
     inserted_id = str(inserted_report.inserted_id)
 
@@ -66,6 +66,9 @@ class runNewman(Resource):
         metadata = utils.generate_metadata(app, env, {"newman": newman_conf['scenarios']}, newman_conf['testinyio_project_id'])
 
         # Run tests
-        response = run_newman(metadata, newman_conf)
+        executions = run_newman(metadata, newman_conf)
 
-        return response
+        metadata['status'] = 'failure' if any(executions[f]['status'] == "failure" for f in executions) else 'success'
+        reponse_saved = utils.post_results_and_webhook(metadata, {'newman':executions})
+
+        return reponse_saved

@@ -28,7 +28,7 @@ def cy_run(metadata, github_conf):
         testiny_update = testinyio.report_test_execution(test_run_id, testinyio_project_id, testinyio_testcase_id, executions[exec]['status'], executions[exec]['report'])
         testiny_updates.append(testiny_update)
 
-    metadata['status'] =  'failure' if any(executions[exec]['status'] == "failure" for exec in executions) else 'success'
+    return utils.send_json(executions)
 
     inserted_report = mongodb.insert_document("cypress", metadata, executions)
     inserted_id = str(inserted_report.inserted_id)
@@ -59,5 +59,9 @@ class runCypress(Resource):
         metadata = utils.generate_metadata(app, env, {"cy": cy_conf['scenarios']}, cy_conf['testinyio_project_id'])
 
         # Run tests
-        response= cy_run(metadata, cy_conf)
-        return response
+        executions= cy_run(metadata, cy_conf)
+
+        metadata['status'] =  'failure' if any(executions[exec]['status'] == "failure" for exec in executions) else 'success'
+        reponse_saved = utils.post_results_and_webhook(metadata, {'cypress': executions})
+
+        return reponse_saved

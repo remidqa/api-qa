@@ -6,11 +6,11 @@ import functions.utils as utils
 
 api = Namespace('reports', description='Reports related operations')
 
-@api.route("/runner/<runner>/report_id/<report_id>")
+@api.route("/report_id/<report_id>")
 class get_report_by_id(Resource):
-    def get(self, runner, report_id):
+    def get(self, report_id):
         query = utils.check_query({"query": {"_id": report_id}})
-        documents = mongodb.find_documents(runner, query)
+        documents = mongodb.find_documents('executions', query)
         return utils.send_json(documents)
 
 @api.route("/runner/<runner>")

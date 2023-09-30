@@ -4,7 +4,8 @@ from bson.objectid import ObjectId
 from datetime import datetime
 import pytz, time
 import functions.testinyio as testinyio
-
+import functions.discord as discord
+import functions.mongodb as mongodb
 
 def get_report_status(runner, report):
     report_status = False
@@ -59,3 +60,26 @@ def generate_metadata(app, env, scenarios, testinyio_project_id):
         "testrun_title": testrun_title,
         "testiny.io_testrun_id": testinyio.create_testrun(testrun_title, testinyio_project_id)
     }
+
+def post_results_and_webhook(metadata, executions):
+    # CHECK EXECUTIONS
+    if not executions.get("newman"):
+        executions['newman'] = None
+    if not executions.get("cypress"):
+        executions['cypress'] = None
+
+    inserted_report = mongodb.insert_document("executions", {'metadata': metadata, 'executions':executions})
+    inserted_id = str(inserted_report.inserted_id)
+
+    # SLACK NOTIFICATION
+    webhook = discord.send_discord_webhook(inserted_id,  metadata['status'], metadata['app'], metadata['env'])
+    
+    return send_json({
+        "status": 200,
+        "data": {
+            "executions": executions,
+            "status": metadata['status'],
+            "inserted_id_in_mongodb": inserted_id,
+            "webhook": webhook
+        }
+    })
