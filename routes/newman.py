@@ -15,39 +15,38 @@ load_dotenv()
 
 api = Namespace('newman', description='Newman related operations')
 
-def run_newman(app, env, github_conf):
+def run_newman(metadata, github_conf):
     # GET CONFIGURATION
     coll_id = github_conf['postman_collection_id']
     env_id = github_conf['postman_environment_id']
     testinyio_project_id = github_conf['testinyio_project_id']
-    folders = github_conf['folders']
-        
+    scenarios = github_conf['scenarios']
+
     # RUN COLLECTION
-    reports = {}
-    test_run = testinyio.create_testrun(app, env, testinyio_project_id)
-    test_run_id = test_run['tr_id']
-    for folder in folders:
-        folder_name = folder['folder_name']
-        execution = newman.run_newman_and_get_report(coll_id, env_id, folder_name)
-        reports[folder_name] = execution
+    executions = {}
+    test_run_id = metadata["testiny.io_testrun_id"]
+    for scenario in scenarios:
+        scenario_name = scenario['folder_name']
+        execution = newman.run_newman_and_get_report(coll_id, env_id, scenario_name)
+        executions[scenario_name] = execution
 
         # SAVE EXECUTION IN TESTS MANAGEMENT TOOL
-        tr = testinyio.report_test_execution(test_run_id, testinyio_project_id, folder['testinyio_testcase_id'], execution['status'], execution['report'] )
+        tr = testinyio.report_test_execution(test_run_id, testinyio_project_id, scenario['testinyio_testcase_id'], execution['status'], execution['report'] )
 
     # SAVE EXECUTIONS IN DATABASE
-    global_status = 'failure' if any(reports[f]['status'] == "failure" for f in reports) else 'success'
-    inserted_report = mongodb.insert_document("newman", reports)
+    metadata['status'] = 'failure' if any(executions[f]['status'] == "failure" for f in executions) else 'success'
+    inserted_report = mongodb.insert_document("newman", metadata, executions)
     inserted_id = str(inserted_report.inserted_id)
 
 
     # SLACK NOTIFICATION
-    webhook = discord.send_discord_webhook("newman", inserted_id, global_status, app, env)
+    webhook = discord.send_discord_webhook("newman", inserted_id,  metadata['status'], metadata['app'], metadata['env'])
     
     return utils.send_json({
         "status": 200,
         "data": {
-            "tr": tr,
-            "newman_run": execution,
+            "executions": executions,
+            "status": metadata['status'],
             "inserted_id_in_mongodb": inserted_id,
             "webhook": webhook
         }
@@ -63,6 +62,10 @@ class runNewman(Resource):
         if newman_conf.get('err', {}):
             return newman_conf
 
-        response = run_newman(app, env, newman_conf)
+        # GENERATE METADATA
+        metadata = utils.generate_metadata(app, env, {"newman": newman_conf['scenarios']}, newman_conf['testinyio_project_id'])
+
+        # Run tests
+        response = run_newman(metadata, newman_conf)
 
         return response

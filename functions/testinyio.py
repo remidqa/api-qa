@@ -8,18 +8,17 @@ load_dotenv()
 testinyio_url = os.environ.get("TESTINYIO_URL")
 testinyio_token = os.environ.get("TESTINYIO_TOKEN")
 
-def create_testrun(app, env, project_id):
-    test_run_title = f"{app}_{env}_{utils.generate_report_name()}"
+def create_testrun(testrun_title, project_id):
     tr_creation = requests.post(
     url = f'{testinyio_url}/testrun',
     headers = { 'X-Api-Key': testinyio_token },
     json = {
         'project_id': project_id,
-        'title': test_run_title
+        'title': testrun_title
     }
     )
     data= tr_creation.json()
-    return { 'tr_id': data['id'] }
+    return data['id']
 
 def add_tc_to_tr(tr_id, tc_id, status):
     adding_tc_to_tr = requests.post(

@@ -32,7 +32,7 @@ def get_postman_conf(app, env):
             'testinyio_project_id': data['testinyio_project_id'] if data.get('testinyio_project_id', {}) else None,
             'postman_collection_id': data['postman']['postman_collection_id'] if data.get('postman', {}).get('postman_collection_id', {}) else None,
             'postman_environment_id': data['postman']['postman_environments'][env] if data.get('postman', {}).get('postman_environments', {}).get(env, {}) else None,
-            'folders': data['postman']['scenarios'] if data.get('postman', {}).get('scenarios', {}) else None
+            'scenarios': data['postman']['scenarios'] if data.get('postman', {}).get('scenarios', {}) else None
         }
         if any(value is None for value in postman_conf.values()):
             return {'err': f"wrong or missing values for '{', '.join({key: value for key, value in postman_conf.items() if value is None}.keys())}'"}
@@ -64,6 +64,7 @@ def get_full_conf(app, env):
     cy_conf = get_cy_conf(app, env)
     postman_conf =  get_postman_conf(app, env)
     return {
+        'testinyio_project_id': cy_conf["testinyio_project_id"] if cy_conf.get('testinyio_project_id') else postman_conf["testinyio_project_id"] if postman_conf.get('testinyio_project_id') else None,
         "cy": cy_conf,
         "newman": postman_conf
     }

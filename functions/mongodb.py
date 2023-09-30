@@ -25,9 +25,9 @@ def find_documents(collection_name, query):
         docs.append(doc)
     return docs
 
-def insert_document(collection_name, document):
+def insert_document(collection_name, metadata, executions):
     collection = get_mongo_collection(collection_name)
-    inserted_document = collection.insert_one(document)
+    inserted_document = collection.insert_one({"metadata": metadata, "executions":executions})
     return inserted_document
 
 def delete_decuments(collection_name, query):
