@@ -17,15 +17,15 @@ def run_tests(app, env):
     )
     return run.json()
 
-def get_report(folder, report_name):
+def get_report(scenario, report_name):
     requested_report = requests.get(
-        url = f"{cy_runner_int_url}/report/folder/{folder}/report_name/{report_name}"
+        url = f"{cy_runner_int_url}/report/folder/{scenario}/report_name/{report_name}"
     )
     return requested_report.json()
 
-def delete_report(folder, report_name):
+def delete_report(scenario, report_name):
     requests.delete(
-        url = f"{cy_runner_int_url}/report/folder/{folder}/report_name/{report_name}"
+        url = f"{cy_runner_int_url}/report/folder/{scenario}/report_name/{report_name}"
     )
 
 def run_cy_and_get_reports(app, env):

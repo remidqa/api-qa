@@ -13,15 +13,14 @@ load_dotenv()
 
 api = Namespace('cypress_run', description='Cypress related operations')
 
-def cypress_run(app, env, github_conf):
+def cy_run(metadata, github_conf):
     # GET CONFIGURATION
     testinyio_project_id = github_conf['testinyio_project_id']
     scenarios = github_conf['scenarios']
 
     # RUN TESTS
-    test_run = testinyio.create_testrun(app, env, testinyio_project_id)
-    test_run_id = test_run['tr_id']
-    executions = cy.run_cy_and_get_reports(app, env)
+    test_run_id = metadata["testiny.io_testrun_id"]
+    executions = cy.run_cy_and_get_reports(metadata['app'], metadata['env'])
     testiny_updates = []
     for exec in executions:
         find_id = list(filter(lambda scenario: scenario["file_name"] == exec, scenarios))
@@ -29,18 +28,18 @@ def cypress_run(app, env, github_conf):
         testiny_update = testinyio.report_test_execution(test_run_id, testinyio_project_id, testinyio_testcase_id, executions[exec]['status'], executions[exec]['report'])
         testiny_updates.append(testiny_update)
 
-    global_status = 'failure' if any(executions[exec]['status'] == "failure" for exec in executions) else 'success'
+    metadata['status'] =  'failure' if any(executions[exec]['status'] == "failure" for exec in executions) else 'success'
 
-    inserted_report = mongodb.insert_document("cypress", executions)
+    inserted_report = mongodb.insert_document("cypress", metadata, executions)
     inserted_id = str(inserted_report.inserted_id)
 
-    webhook = discord.send_discord_webhook("cypress", inserted_id, global_status, app, env)
+    webhook = discord.send_discord_webhook("cypress", inserted_id, metadata['status'], metadata['app'], metadata['env'])
         
     return utils.send_json({
         "status": 200,
         "data": {
-            "testiny_updates": testiny_updates,
-            "cy_run_status": global_status,
+            "executions": executions,
+            "status": metadata['status'],
             "inserted_id_in_mongodb": inserted_id,
             "webhook": webhook
         }
@@ -55,6 +54,10 @@ class runCypress(Resource):
         cy_conf = git.get_cy_conf(app, env)
         if cy_conf.get('err', {}):
             return cy_conf
+        
+        # GENERATE METADATA
+        metadata = utils.generate_metadata(app, env, {"cy": cy_conf['scenarios']}, cy_conf['testinyio_project_id'])
 
-        response= cypress_run(app, env, cy_conf)
+        # Run tests
+        response= cy_run(metadata, cy_conf)
         return response

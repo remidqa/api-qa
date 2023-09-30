@@ -2,8 +2,8 @@ import json
 from bson import json_util
 from bson.objectid import ObjectId
 from datetime import datetime
-import pytz
-
+import pytz, time
+import functions.testinyio as testinyio
 
 
 def get_report_status(runner, report):
@@ -26,8 +26,8 @@ def check_query(body):
             query["_id"] = ObjectId(id)
     return query
 
-def generate_report_name():
-    dt = datetime.now()
+def generate_testrun_title(timestamp):
+    dt = datetime.fromtimestamp(timestamp)
     ca_east_tz = pytz.timezone('America/Montreal')
     dt_ca = dt.astimezone(ca_east_tz)
     year = dt_ca.year
@@ -40,3 +40,22 @@ def generate_report_name():
     ms = str(dt_ca.microsecond).zfill(6)[:2]
     
     return f"{year}_{month}_{day}-{week_day}-{hour}:{minute}:{second}.{ms}"
+
+def get_tests_list(list, runner):
+    return [''.join(d.values()) for d in [{k: v for k, v in d.items() if k != 'testinyio_testcase_id'} for d in list[runner]]]
+
+def generate_metadata(app, env, scenarios, testinyio_project_id):
+    ts = time.time()
+    tests_list = {
+        "newman": get_tests_list(scenarios, 'newman') if scenarios.get('newman', {}) else [],
+        "cy": get_tests_list(scenarios, 'cy') if scenarios.get('cy', {}) else []
+    }
+    testrun_title= f"{app}_{env}_{generate_testrun_title(ts)}"
+    return {
+        "tests_list": tests_list,
+        "req_timestamp": ts,
+        "app": app,
+        "env": env,
+        "testrun_title": testrun_title,
+        "testiny.io_testrun_id": testinyio.create_testrun(testrun_title, testinyio_project_id)
+    }
