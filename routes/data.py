@@ -9,6 +9,208 @@ load_dotenv()
 
 api = Namespace('run', description='Runs related operations')
 
+def convert_date_to_timestamp(date_string):
+    date_format = '%Y-%m-%dT%H:%M:%S.%fZ'
+    dt = datetime.strptime(date_string, date_format)
+    timestamp = round(dt.timestamp() * 1000)
+    return timestamp
+
+def sum(data, query):
+    keys = query.split('.')
+    result = 0
+    for i in list(data.keys()):
+        temp = data[i]
+        for k in keys:
+            temp = temp[k]
+        result = result + int(temp)
+    return result
+
+def avg(data, query):
+    keys = query.split('.')
+    result = 0
+    for i in list(data.keys()):
+        temp = data[i]
+        for k in keys:
+            temp = temp[k]
+        result = result + int(temp)
+    return  round(result / len(list(data.keys())), 2)
+
+def generate_scenario_metrics(type, scenario_metrics):
+    test_metrics = scenario_metrics['report']['Run']['Stats']['Assertions'] if type == 'newman' else scenario_metrics['report']['stats'] if type == 'cypress' else None
+    timings_metrics = scenario_metrics['report']['Run']['Timings'] if type == 'newman' else scenario_metrics['report']['stats'] if type == 'cypress' else None
+    return {
+        "tests": {
+            "total": int(test_metrics['total']) if type == 'newman' else int(test_metrics['tests']) if type == 'cypress' else 0,
+            "pending": int(test_metrics['pending']) if type == 'newman' or type == 'cypress' else 0,
+            "failed": int(test_metrics['failed']) if type == 'newman' else int(test_metrics['failures']) if type == 'cypress' else 0,
+            "success": int(test_metrics['total']) - int(test_metrics['pending']) - int(test_metrics['failed']) if type == 'newman' else int(test_metrics['tests']) - int(test_metrics['pending']) - int(test_metrics['failures']) if type == 'cypress' else 0
+        },
+        "timings": {
+            "responseAverage": int(timings_metrics['responseAverage']) if type == 'newman' else int(timings_metrics['duration']) / int(timings_metrics['tests']) if type == 'cypress' else 0,
+            "started": int(timings_metrics['started']) if type == 'newman' else int(convert_date_to_timestamp(timings_metrics['start'])) if type == 'cypress' else 0,
+            "completed": int(timings_metrics['completed']) if type == 'newman' else int(convert_date_to_timestamp(timings_metrics['end'])) if type == 'cypress' else 0,
+            "duration": int(timings_metrics['completed']) - int(timings_metrics['started']) if type == 'newman' else int(convert_date_to_timestamp(timings_metrics['end'])) - int(convert_date_to_timestamp(timings_metrics['start'])) if type == 'cypress' else 0
+        }
+    }
+
+def generate_scenarios_summary(scenarios_details):
+    return {
+        "tests": {
+            "total": sum(scenarios_details, "tests.total"),
+            "pending": sum(scenarios_details, "tests.pending"),
+            "failed": sum(scenarios_details, "tests.failed"),
+            "success": sum(scenarios_details, "tests.success")
+        },
+        "timings": {
+            "responseAverage": avg(scenarios_details, 'timings.responseAverage'),
+            "duration": sum(scenarios_details, "timings.duration")
+        }
+    }
+
+def generate_scenarios_metrics(type, executions):
+    scenarios = list(executions.keys())
+    details = {}
+    for scenario in scenarios:
+        details[scenario] = generate_scenario_metrics(type, executions[scenario])
+    summary = generate_scenarios_summary(details)
+    return {'details': details, 'summary': summary}
+
+def generate_summary(newman_summary, cypress_summary):
+    return {
+        "tests": {
+            "total": newman_summary['tests']['total'] if newman_summary else 0 + cypress_summary['tests']['total'] if cypress_summary else 0,
+            "pending": newman_summary['tests']['pending'] if newman_summary else 0 + cypress_summary['tests']['pending'] if cypress_summary else 0,
+            "failed": newman_summary['tests']['failed'] if newman_summary else 0 + cypress_summary['tests']['failed'] if cypress_summary else 0,
+            "success": newman_summary['tests']['success'] if newman_summary else 0 + cypress_summary['tests']['success'] if cypress_summary else 0
+        },
+        "timings": {
+            "responseAverage": (newman_summary['timings']['responseAverage'] if newman_summary else 0 + cypress_summary['timings']['responseAverage'] if cypress_summary else 0) / 2 if cypress_summary and newman_summary else 1,
+            "duration": newman_summary['timings']['duration'] if newman_summary else 0 + cypress_summary['timings']['duration'] if cypress_summary else 0
+        }
+    }
+
+def generate_metadata(metadata):
+    return {
+        "testiny.io_testrun_id": metadata['testiny.io_testrun_id'],
+        "testiny.io_project_id": metadata['testiny.io_project_id']
+    }
+
+def find_report(documents, app, report_name):
+    report = {}
+    for doc in documents:
+        if doc['metadata']['app'] == app and doc['metadata']['testrun_title'] == report_name: report = doc
+    return report
+
+def generate_metrics(documents, dataset):
+    metrics = {}
+    for app in list(dataset.keys()):
+        metrics[app] = {}
+        for report_name in list(dataset[app].keys()):
+            tests_list = dataset[app][report_name]
+            mongo_report = find_report(documents, app, report_name)
+            report_metrics = {}
+            newman_executed = True if len(tests_list['newman']) > 0 else False
+            cypress_executed = True if len(tests_list['cypress']) > 0 else False
+
+            report_metrics['newman'] = generate_scenarios_metrics('newman', mongo_report['executions']['newman']) if newman_executed else None
+            report_metrics['cypress'] = generate_scenarios_metrics('cypress', mongo_report['executions']['cypress']) if cypress_executed else None
+            report_metrics['summary'] = generate_summary(report_metrics['newman']['summary'] if newman_executed else None, report_metrics['cypress']['summary'] if cypress_executed else None)
+            report_metrics['metadata'] = generate_metadata(mongo_report['metadata'])
+
+            metrics[app][report_name] = report_metrics
+
+    return metrics
+
+template = {
+        '__app__': {
+            '__report_name__': {
+                'newman': {
+                    'details': {
+                        '__scenario_name__': {
+                            "assertions": {
+                                "total": 0,
+                                "pending": 0,
+                                "failed": 0,
+                                "success": 0
+                            },
+                            "requests": {
+                                "total": 0,
+                                "pending": 0,
+                                "failed": 0,
+                                "success": 0
+                            },
+                            "timings": {
+                                "responseAverage": 0,
+                                "started": 0,
+                                "completed": 0,
+                                "duration": 0
+                            }
+                        }
+                    },
+                    'summary':  {
+                        "tests": {
+                            "total": 0,
+                            "pending": 0,
+                            "failed": 0,
+                            "success": 0
+                        },
+                        "timings": {
+                            "responseAverage": 0,
+                            "duration": 0
+                        }
+                    }
+                },
+                'cypress': {
+                    'details': {
+                        '__scenario_name__': {
+                            "tests": {
+                                "total": 0,
+                                "pending": 0,
+                                "failed": 0,
+                                "success": 0
+                            },
+                            "timings": {
+                                "responseAverage": 0,
+                                "started": 0,
+                                "completed": 0,
+                                "duration": 0
+                            }
+                        }
+                    },
+                    'summary':  {
+                        "tests": {
+                            "total": 0,
+                            "pending": 0,
+                            "failed": 0,
+                            "success": 0
+                        },
+                        "timings": {
+                            "responseAverage": 0,
+                            "duration": 0
+                        }
+                    }
+                },
+                'summary': {
+                    "tests": {
+                        "total": 0,
+                        "pending": 0,
+                        "failed": 0,
+                        "success": 0
+                    },
+                    "timings": {
+                        "responseAverage": 0,
+                        "duration": 0
+                    }
+                },
+                "metadata": {
+                    "testiny.io_testrun_id": 0,
+                    "testiny.io_project_id": 0
+                }   
+            }
+        }
+    }
+
+
 @api.route("")
 class run(Resource):
     def get(self):
@@ -21,115 +223,27 @@ class run(Resource):
         sort = {'value': request.args.get('sort').split(",")[0], 'direction': int(request.args.get('sort').split(",")[1])} if request.args.get('sort') else None
         limit = int(request.args.get('limit')) if request.args.get('limit') else 10
         documents = mongodb.find_documents('executions', query, {'sort': sort, 'limit': limit})
+        
+        #for doc in documents:
+        #    if doc['_id']: del doc['_id']
+        #return documents
 
-        analyse = {}
+        dataset = {}
+        #dataset_example = {'front-qa':{'report_name':{'newman':[], 'cypress':[]}}}
 
         for doc in documents:
-            if doc['_id']: doc['_id'] = str(doc['_id'])
+            if doc['_id']: del doc['_id']
             app = doc['metadata']['app']
             testrun_title = doc['metadata']['testrun_title']
-            if not analyse.get(app): analyse[app] = {}
-            analyse[app][testrun_title] = {}
-            if doc['executions']['newman']:
-                details = {}
-                for exec_name, exec_infos in doc['executions']['newman'].items():
-                    run = exec_infos['report']['Run']
-                    details[exec_name] = {
-                        "assertions": {
-                            'total': run['Stats']['Assertions']['total'],
-                            'pending': run['Stats']['Assertions']['pending'],
-                            'failed': run['Stats']['Assertions']['failed'],
-                            'success': int(run['Stats']['Assertions']['total']) - int(run['Stats']['Assertions']['failed']) - int(run['Stats']['Assertions']['pending'])
-                        },
-                        'requests': {
-                            'total': run['Stats']['Requests']['total'],
-                            'pending': run['Stats']['Requests']['pending'],
-                            'failed': run['Stats']['Requests']['failed'],
-                            'success': int(run['Stats']['Requests']['total']) - int(run['Stats']['Requests']['pending']) - int(run['Stats']['Requests']['failed'])
-                        },
-                        'timings': {
-                            'responseAverage': run['Timings']['responseAverage'],
-                            'started': run['Timings']['started'],
-                            'completed': run['Timings']['completed'],
-                            'duration': int(run['Timings']['completed']) - int(run['Timings']['started'])
-                        }
-                    }
-                summary = {
-                    'assertions': {
-                        'total': utils.dicts_sum(details, 'assertions.total'),
-                        'pending': utils.dicts_sum(details, 'assertions.pending'),
-                        'failed': utils.dicts_sum(details, 'assertions.failed'),
-                        'success': utils.dicts_sum(details, 'assertions.success')
-                    },
-                    'requests': {
-                        'total': utils.dicts_sum(details, 'requests.total'),
-                        'pending': utils.dicts_sum(details, 'requests.pending'),
-                        'failed': utils.dicts_sum(details, 'requests.failed'),
-                        'success': utils.dicts_sum(details, 'requests.success')
-                    },
-                    'timings': {
-                        'responseAverage': utils.dicts_sum(details, 'timings.responseAverage'),
-                        'started': utils.dicts_sum(details, 'timings.started'),
-                        'completed': utils.dicts_sum(details, 'timings.completed'),
-                        'duration': utils.dicts_sum(details, 'timings.duration')
-                    }
-                    
-                }
-                analyse[app][testrun_title]['newman'] = {'details': details, 'summary': summary}
-            else: analyse[app][testrun_title]['newman'] = None
-            if doc['executions']['cypress']:
-                details = {}
-                for exec_name, exec_infos in doc['executions']['cypress'].items():
-
-                    details[exec_name] = {
-                        "tests": {
-                            'total': exec_infos['report']['stats']['tests'],
-                            'pending': exec_infos['report']['stats']['pending'],
-                            'failed': exec_infos['report']['stats']['failures'],
-                            'success': exec_infos['report']['stats']['passes']
-                        },
-                        'timings': {
-                            'responseAverage': int(exec_infos['report']['stats']['duration'])/int(exec_infos['report']['stats']['tests']),
-                            'started': datetime.fromisoformat(exec_infos['report']['stats']['start'].replace('Z', '+00:00')).timestamp(),
-                            'completed': datetime.fromisoformat(exec_infos['report']['stats']['end'].replace('Z', '+00:00')).timestamp(),
-                            'duration': int(datetime.fromisoformat(exec_infos['report']['stats']['end'].replace('Z', '+00:00')).timestamp())*1000 - int(datetime.fromisoformat(exec_infos['report']['stats']['start'].replace('Z', '+00:00')).timestamp())*1000
-                        }
-                    }
-                summary = {
-                    'tests': {
-                        'total': utils.dicts_sum(details, 'tests.total'),
-                        'pending': utils.dicts_sum(details, 'tests.pending'),
-                        'failed': utils.dicts_sum(details, 'tests.failed'),
-                        'success': utils.dicts_sum(details, 'tests.success')
-                    },
-                    'timings': {
-                        'responseAverage': utils.dicts_sum(details, 'timings.responseAverage'),
-                        'started': utils.dicts_sum(details, 'timings.started'),
-                        'completed': utils.dicts_sum(details, 'timings.completed'),
-                        'duration': utils.dicts_sum(details, 'timings.duration')
-                    }
-                }
-                analyse[app][testrun_title]['cypress'] = {'details': details, 'summary': summary}
-            else: analyse[app][testrun_title]['cypress'] = None
-            summary = {
-                'tests': {
-                    'total': int(analyse[app][testrun_title]['newman']['summary']['assertions']['total']) if analyse[app][testrun_title]['newman'] else 0 + int(analyse[app][testrun_title]['cypress']['summary']['tests']['total']) if analyse[app][testrun_title]['cypress'] else 0,
-                    'pending': int(analyse[app][testrun_title]['newman']['summary']['assertions']['pending']) if analyse[app][testrun_title]['newman'] else 0 + int(analyse[app][testrun_title]['cypress']['summary']['tests']['pending']) if analyse[app][testrun_title]['cypress'] else 0,
-                    'failed': int(analyse[app][testrun_title]['newman']['summary']['assertions']['failed']) if analyse[app][testrun_title]['newman'] else 0+ int(analyse[app][testrun_title]['cypress']['summary']['tests']['failed']) if analyse[app][testrun_title]['cypress'] else 0,
-                    'success': int(analyse[app][testrun_title]['newman']['summary']['assertions']['success']) if analyse[app][testrun_title]['newman'] else 0 + int(analyse[app][testrun_title]['cypress']['summary']['tests']['success']) if analyse[app][testrun_title]['cypress'] else 0
-                },
-                'timings': {
-                    'duration': int(analyse[app][testrun_title]['newman']['summary']['timings']['duration']) if analyse[app][testrun_title]['newman'] else 0 + int(analyse[app][testrun_title]['cypress']['summary']['timings']['duration']) if analyse[app][testrun_title]['cypress'] else 0
-                },
+            newman_tests_list = doc['metadata']['tests_list']['newman'] if doc['metadata']['tests_list'].get('newman') else []
+            cypress_tests_list = doc['metadata']['tests_list']['cy'] if doc['metadata']['tests_list'].get('cy') else []
+            if not any(value == app for value in list(dataset.keys())): dataset[app]={}
+            if not any(value == testrun_title for value in list(dataset[app].keys())): dataset[app][testrun_title]={
+                'newman': newman_tests_list,
+                'cypress': cypress_tests_list
             }
-            analyse[app][testrun_title]['summary'] = summary
-
-            metadata = {
-                'testiny.io_testrun_id': doc['metadata']['testiny.io_testrun_id'],
-                'testiny.io_project_id': doc['metadata']['testiny.io_project_id']
-            }
-            analyse[app][testrun_title]['metadata'] = metadata
-                
+        #return dataset
+        analyse = generate_metrics(documents, dataset)
 
 
         return analyse
