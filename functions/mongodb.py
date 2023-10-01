@@ -17,9 +17,11 @@ def find_one_document(collection_name, query):
     document = collection.find_one(query)
     return document
 
-def find_documents(collection_name, query):
+def find_documents(collection_name, query, options):
     collection = get_mongo_collection(collection_name)
-    documents = collection.find(query)
+    sort = options['sort'] if options.get('sort') and options.get('sort', {}).get('value') and options.get('sort', {}).get('direction') else {'value': "_id", "direction": 1}
+    limit = options['limit'] if options.get('limit') else 10
+    documents = collection.find(query).sort(sort['value'], sort['direction']).limit(limit)
     docs =[]
     for doc in documents:
         docs.append(doc)

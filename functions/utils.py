@@ -83,3 +83,14 @@ def post_results_and_webhook(metadata, executions):
             "webhook": webhook
         }
     })
+
+def dicts_sum(dictionary, key):
+    sum = 0
+    keys = key.split('.')
+    for i_name, d_value in dictionary.items():
+        temp = d_value
+        for k in keys:
+            temp = temp[k]
+        sum += int(temp)
+    return sum
+
