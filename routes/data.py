@@ -46,7 +46,7 @@ def generate_scenario_metrics(type, scenario_metrics):
             "success": int(test_metrics['total']) - int(test_metrics['pending']) - int(test_metrics['failed']) if type == 'newman' else int(test_metrics['tests']) - int(test_metrics['pending']) - int(test_metrics['failures']) if type == 'cypress' else 0
         },
         "timings": {
-            "responseAverage": int(timings_metrics['responseAverage']) if type == 'newman' else int(timings_metrics['duration']) / int(timings_metrics['tests']) if type == 'cypress' else 0,
+            "responseAverage": int(timings_metrics['responseAverage']) if type == 'newman' else int(int(timings_metrics['duration']) / int(timings_metrics['tests'])/10) if type == 'cypress' else 0,
             "started": int(timings_metrics['started']) if type == 'newman' else int(convert_date_to_timestamp(timings_metrics['start'])) if type == 'cypress' else 0,
             "completed": int(timings_metrics['completed']) if type == 'newman' else int(convert_date_to_timestamp(timings_metrics['end'])) if type == 'cypress' else 0,
             "duration": int(timings_metrics['completed']) - int(timings_metrics['started']) if type == 'newman' else int(convert_date_to_timestamp(timings_metrics['end'])) - int(convert_date_to_timestamp(timings_metrics['start'])) if type == 'cypress' else 0
