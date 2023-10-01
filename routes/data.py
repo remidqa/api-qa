@@ -76,6 +76,11 @@ def generate_scenarios_metrics(type, executions):
     return {'details': details, 'summary': summary}
 
 def generate_summary(newman_summary, cypress_summary):
+    newman_avg = newman_summary['timings']['responseAverage'] if newman_summary else 0
+    cypress_avg = cypress_summary['timings']['responseAverage'] if cypress_summary else 0
+    count = 1
+    if newman_summary and cypress_summary: count = count +1
+    summary_responseAverage =  (newman_avg + cypress_avg) / count
     return {
         "tests": {
             "total": newman_summary['tests']['total'] if newman_summary else 0 + cypress_summary['tests']['total'] if cypress_summary else 0,
@@ -84,7 +89,7 @@ def generate_summary(newman_summary, cypress_summary):
             "success": newman_summary['tests']['success'] if newman_summary else 0 + cypress_summary['tests']['success'] if cypress_summary else 0
         },
         "timings": {
-            "responseAverage": (newman_summary['timings']['responseAverage'] if newman_summary else 0 + cypress_summary['timings']['responseAverage'] if cypress_summary else 0) / 2 if cypress_summary and newman_summary else 1,
+            "responseAverage": summary_responseAverage,
             "duration": newman_summary['timings']['duration'] if newman_summary else 0 + cypress_summary['timings']['duration'] if cypress_summary else 0
         }
     }
