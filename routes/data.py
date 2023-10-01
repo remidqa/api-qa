@@ -125,7 +125,8 @@ class run(Resource):
             analyse[app][testrun_title]['summary'] = summary
 
             metadata = {
-                'testiny.io_testrun_id': doc['metadata']['testiny.io_testrun_id']
+                'testiny.io_testrun_id': doc['metadata']['testiny.io_testrun_id'],
+                'testiny.io_project_id': doc['metadata']['testiny.io_project_id']
             }
             analyse[app][testrun_title]['metadata'] = metadata
                 
