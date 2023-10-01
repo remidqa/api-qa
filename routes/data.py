@@ -92,7 +92,7 @@ class run(Resource):
                             'responseAverage': int(exec_infos['report']['stats']['duration'])/int(exec_infos['report']['stats']['tests']),
                             'started': datetime.fromisoformat(exec_infos['report']['stats']['start'].replace('Z', '+00:00')).timestamp(),
                             'completed': datetime.fromisoformat(exec_infos['report']['stats']['end'].replace('Z', '+00:00')).timestamp(),
-                            'duration': int(datetime.fromisoformat(exec_infos['report']['stats']['end'].replace('Z', '+00:00')).timestamp()) - int(datetime.fromisoformat(exec_infos['report']['stats']['start'].replace('Z', '+00:00')).timestamp())
+                            'duration': int(datetime.fromisoformat(exec_infos['report']['stats']['end'].replace('Z', '+00:00')).timestamp())*1000 - int(datetime.fromisoformat(exec_infos['report']['stats']['start'].replace('Z', '+00:00')).timestamp())*1000
                         }
                     }
                 summary = {
@@ -113,16 +113,21 @@ class run(Resource):
             else: analyse[app][testrun_title]['cypress'] = None
             summary = {
                 'tests': {
-                    'total': int(analyse[app][testrun_title]['newman']['summary']['requests']['total']) if analyse[app][testrun_title]['newman'] else 0 + int(analyse[app][testrun_title]['cypress']['summary']['tests']['total']) if analyse[app][testrun_title]['cypress'] else 0,
-                    'pending': int(analyse[app][testrun_title]['newman']['summary']['requests']['pending']) if analyse[app][testrun_title]['newman'] else 0 + int(analyse[app][testrun_title]['cypress']['summary']['tests']['pending']) if analyse[app][testrun_title]['cypress'] else 0,
-                    'failed': int(analyse[app][testrun_title]['newman']['summary']['requests']['failed']) if analyse[app][testrun_title]['newman'] else 0+ int(analyse[app][testrun_title]['cypress']['summary']['tests']['failed']) if analyse[app][testrun_title]['cypress'] else 0,
-                    'success': int(analyse[app][testrun_title]['newman']['summary']['requests']['success']) if analyse[app][testrun_title]['newman'] else 0 + int(analyse[app][testrun_title]['cypress']['summary']['tests']['success']) if analyse[app][testrun_title]['cypress'] else 0
+                    'total': int(analyse[app][testrun_title]['newman']['summary']['assertions']['total']) if analyse[app][testrun_title]['newman'] else 0 + int(analyse[app][testrun_title]['cypress']['summary']['tests']['total']) if analyse[app][testrun_title]['cypress'] else 0,
+                    'pending': int(analyse[app][testrun_title]['newman']['summary']['assertions']['pending']) if analyse[app][testrun_title]['newman'] else 0 + int(analyse[app][testrun_title]['cypress']['summary']['tests']['pending']) if analyse[app][testrun_title]['cypress'] else 0,
+                    'failed': int(analyse[app][testrun_title]['newman']['summary']['assertions']['failed']) if analyse[app][testrun_title]['newman'] else 0+ int(analyse[app][testrun_title]['cypress']['summary']['tests']['failed']) if analyse[app][testrun_title]['cypress'] else 0,
+                    'success': int(analyse[app][testrun_title]['newman']['summary']['assertions']['success']) if analyse[app][testrun_title]['newman'] else 0 + int(analyse[app][testrun_title]['cypress']['summary']['tests']['success']) if analyse[app][testrun_title]['cypress'] else 0
                 },
                 'timings': {
                     'duration': int(analyse[app][testrun_title]['newman']['summary']['timings']['duration']) if analyse[app][testrun_title]['newman'] else 0 + int(analyse[app][testrun_title]['cypress']['summary']['timings']['duration']) if analyse[app][testrun_title]['cypress'] else 0
-                }
+                },
             }
             analyse[app][testrun_title]['summary'] = summary
+
+            metadata = {
+                'testiny.io_testrun_id': doc['metadata']['testiny.io_testrun_id']
+            }
+            analyse[app][testrun_title]['metadata'] = metadata
                 
 
 
