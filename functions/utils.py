@@ -58,6 +58,7 @@ def generate_metadata(app, env, scenarios, testinyio_project_id):
         "app": app,
         "env": env,
         "testrun_title": testrun_title,
+        "testiny.io_project_id": testinyio_project_id,
         "testiny.io_testrun_id": testinyio.create_testrun(testrun_title, testinyio_project_id)
     }
 
