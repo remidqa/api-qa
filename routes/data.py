@@ -38,29 +38,42 @@ def avg(data, query):
 def generate_scenario_metrics(type, scenario_metrics):
     test_metrics = scenario_metrics['report']['Run']['Stats']['Assertions'] if type == 'newman' else scenario_metrics['report']['stats'] if type == 'cypress' else None
     timings_metrics = scenario_metrics['report']['Run']['Timings'] if type == 'newman' else scenario_metrics['report']['stats'] if type == 'cypress' else None
-    return {
+    temp = {
         "tests": {
             "total": int(test_metrics['total']) if type == 'newman' else int(test_metrics['tests']) if type == 'cypress' else 0,
             "pending": int(test_metrics['pending']) if type == 'newman' or type == 'cypress' else 0,
             "failed": int(test_metrics['failed']) if type == 'newman' else int(test_metrics['failures']) if type == 'cypress' else 0,
-            "success": int(test_metrics['total']) - int(test_metrics['pending']) - int(test_metrics['failed']) if type == 'newman' else int(test_metrics['tests']) - int(test_metrics['pending']) - int(test_metrics['failures']) if type == 'cypress' else 0
+            #"success": (int(test_metrics['total']) - int(test_metrics['pending']) - int(test_metrics['failed'])) if type == 'newman' else ((int(test_metrics['tests']) - int(test_metrics['pending']) - int(test_metrics['failures'])) if type == 'cypress' else 0)
         },
         "timings": {
             "responseAverage": int(timings_metrics['responseAverage']) if type == 'newman' else int(int(timings_metrics['duration']) / int(timings_metrics['tests'])/10) if type == 'cypress' else 0,
             "started": int(timings_metrics['started']) if type == 'newman' else int(convert_date_to_timestamp(timings_metrics['start'])) if type == 'cypress' else 0,
             "completed": int(timings_metrics['completed']) if type == 'newman' else int(convert_date_to_timestamp(timings_metrics['end'])) if type == 'cypress' else 0,
-            "duration": int(timings_metrics['completed']) - int(timings_metrics['started']) if type == 'newman' else int(convert_date_to_timestamp(timings_metrics['end'])) - int(convert_date_to_timestamp(timings_metrics['start'])) if type == 'cypress' else 0
+            "duration": (int(timings_metrics['completed']) - int(timings_metrics['started'])) if type == 'newman' else ((int(convert_date_to_timestamp(timings_metrics['end'])) - int(convert_date_to_timestamp(timings_metrics['start']))) if type == 'cypress' else 0)
         }
     }
+    temp['tests']['success'] = int(temp['tests']['total']) - int(temp['tests']['pending']) - int(temp['tests']['failed'])
+    temp['tests']['status'] = 'success' if temp['tests']['total'] == temp['tests']['success'] else 'failed'
+    return temp
+
+def sum_status(scenarios_details):
+    count_total = 0
+    count_success = 0
+    count_failed = 0
+    for scenario in scenarios_details:
+        count_total = count_total + 1
+        if scenarios_details[scenario]['tests']['status'] == 'success': count_success = count_success + 1
+        if scenarios_details[scenario]['tests']['status'] == 'failed': count_failed = count_failed + 1
+    return {
+        'total': count_total,
+        'failed': count_failed,
+        'success': count_success
+    }
+        
 
 def generate_scenarios_summary(scenarios_details):
     return {
-        "tests": {
-            "total": sum(scenarios_details, "tests.total"),
-            "pending": sum(scenarios_details, "tests.pending"),
-            "failed": sum(scenarios_details, "tests.failed"),
-            "success": sum(scenarios_details, "tests.success")
-        },
+        "tests": sum_status(scenarios_details),
         "timings": {
             "responseAverage": avg(scenarios_details, 'timings.responseAverage'),
             "duration": sum(scenarios_details, "timings.duration")
@@ -83,14 +96,14 @@ def generate_summary(newman_summary, cypress_summary):
     summary_responseAverage =  (newman_avg + cypress_avg) / count
     return {
         "tests": {
-            "total": newman_summary['tests']['total'] if newman_summary else 0 + cypress_summary['tests']['total'] if cypress_summary else 0,
-            "pending": newman_summary['tests']['pending'] if newman_summary else 0 + cypress_summary['tests']['pending'] if cypress_summary else 0,
-            "failed": newman_summary['tests']['failed'] if newman_summary else 0 + cypress_summary['tests']['failed'] if cypress_summary else 0,
-            "success": newman_summary['tests']['success'] if newman_summary else 0 + cypress_summary['tests']['success'] if cypress_summary else 0
+            "total": (newman_summary['tests']['total'] if newman_summary else 0) + (cypress_summary['tests']['total'] if cypress_summary else 0),
+            #"pending": (newman_summary['tests']['pending'] if newman_summary else 0) + (cypress_summary['tests']['pending'] if cypress_summary else 0),
+            "failed": (newman_summary['tests']['failed'] if newman_summary else 0) + (cypress_summary['tests']['failed'] if cypress_summary else 0),
+            "success": (newman_summary['tests']['success'] if newman_summary else 0) + (cypress_summary['tests']['success'] if cypress_summary else 0)
         },
         "timings": {
             "responseAverage": summary_responseAverage,
-            "duration": newman_summary['timings']['duration'] if newman_summary else 0 + cypress_summary['timings']['duration'] if cypress_summary else 0
+            "duration": (newman_summary['timings']['duration'] if newman_summary else 0) + (cypress_summary['timings']['duration'] if cypress_summary else 0)
         }
     }
 
@@ -121,6 +134,7 @@ def generate_metrics(documents, dataset):
             report_metrics['cypress'] = generate_scenarios_metrics('cypress', mongo_report['executions']['cypress']) if cypress_executed else None
             report_metrics['summary'] = generate_summary(report_metrics['newman']['summary'] if newman_executed else None, report_metrics['cypress']['summary'] if cypress_executed else None)
             report_metrics['metadata'] = generate_metadata(mongo_report['metadata'])
+            if report_name == 'full-stack_uat_2023_10_01-Sun-15:53:17.86': print(report_metrics['summary'])
 
             metrics[app][report_name] = report_metrics
 
@@ -225,9 +239,9 @@ class run(Resource):
             query['metadata.app'] = request.args.get('app')
 
         # DEFINE OPTIONS
-        sort = {'value': request.args.get('sort').split(",")[0], 'direction': int(request.args.get('sort').split(",")[1])} if request.args.get('sort') else None
-        limit = int(request.args.get('limit')) if request.args.get('limit') else 10
-        documents = mongodb.find_documents('executions', query, {'sort': sort, 'limit': limit})
+        #sort = {'value': request.args.get('sort').split(",")[0], 'direction': int(request.args.get('sort').split(",")[1])} if request.args.get('sort') else None
+        #limit = int(request.args.get('limit')) if request.args.get('limit') else 10
+        documents = mongodb.find_documents('executions', query, {'sort': {'value': 'metadata.req_timestamp', 'direction': -1}, 'limit': 100})
         
         #for doc in documents:
         #    if doc['_id']: del doc['_id']
